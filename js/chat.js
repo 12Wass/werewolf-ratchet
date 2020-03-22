@@ -28,13 +28,21 @@ if (name !== null){
         }
         if (received.command == "setName"){
           let usersList = document.getElementById("usersList"); 
-          usersList.innerHTML +=  "<div id='" + received.message + "'>" + received.message + "</div>"; 
+          usersList.innerHTML += '<div id="' + received.message + '" onclick="createConversation(' + received.message + ')">' + received.message + '</div>';
         }
         if (received.command == "getNames"){
           addNameToConversations(received); 
         }
         if (received.command == "disconnectUser"){
           disconnectUser(received.user);  
+        }
+        if (received.command == "nameUsed"){
+          alert("Le pseudo choisit est déjà utilisé, veuillez réessayer."); 
+          document.location.reload(true); // Recharger la page actuelle.
+        }
+        if (received.command == "conversationCreated"){
+          let chatInner = document.getElementById("msger-chat"); 
+          chatInner.innerHTML = ""; 
         }
     };
     
@@ -101,9 +109,13 @@ function addNameToConversations(received){
   delete received.command; 
   let usersList = document.getElementById("usersList"); 
   for (let [key, value] in received){
-    usersList.innerHTML += "<div id='" + received[key] + "'>" + received[key] + "</div>"; 
+    usersList.innerHTML +=  '<div id="' + received[key] + '" onclick="createConversation(' + received[key] + ')">' + received[key] + '</div>'; 
   }
 }
 function disconnectUser(user){
   document.getElementById(user).remove(); 
+}
+function createConversation(user){
+  let data = {message: user.id, sender: name, command: "createConversation"};
+  conn.send(JSON.stringify(data)); 
 }

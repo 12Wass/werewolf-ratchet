@@ -13,6 +13,7 @@ class Chat implements MessageComponentInterface {
     public function __construct() {
         $this->clients = [];
         $this->database = new \DbConnect(); 
+        $this->currentConversation = "general"; 
     }
 
     public function onOpen(ConnectionInterface $conn) {
@@ -30,8 +31,14 @@ class Chat implements MessageComponentInterface {
             $this->onGeneralMessage($from, $insert, $msg); 
         }
         if ($insert->command == "setName"){
-            $this->setName($from, $msg); 
-            echo printf("Setting new name '%s'for %d", $insert->message, $from->name);
+            if ($this->checkName($insert->message)){
+                $this->setName($from, $msg); 
+            }
+            else {
+                $from->send(json_encode(["command" => "nameUsed"]));
+                return;  
+            }
+            // echo printf("Setting new name '%s'for %d", $insert->message, $from->name);
         }
         if ($insert->command == "getNames"){
             $nameArray = ["command" => "getNames"]; 
@@ -40,9 +47,13 @@ class Chat implements MessageComponentInterface {
                     $nameArray[] = $client->name; 
                 }
             }
-            var_dump($nameArray);
             $nameArray = json_encode($nameArray);
             $client->send($nameArray); 
+        }
+        if ($insert->command == "createConversation"){
+            if($this->createConversation($insert->message, $from)){
+                $from->send(json_encode(["command" => "conversationCreated", "user" => $insert->message])); 
+            }
         }
     }
 
@@ -73,23 +84,59 @@ class Chat implements MessageComponentInterface {
         $db = $this->database->connect(); 
         $query = $db->prepare('INSERT INTO message(sender, message) VALUES (?, ?)'); 
         $query->execute(array($insert->sender, $insert->message));
-    
+ 
         foreach ($this->clients as $client) { // Modifier pour envoyer exclusivement au client concerné 
             if ($from !== $client) {
-                // The sender is not the receiver, send to each client connected
                 $client->send($msg);
             }
         }
     }
 
     public function setName($from, $msg){
+        // Rajouter une contrainte qui vérifie si le pseudo choisit n'existe pas déjà. 
+
         $decodedMsg = json_decode($msg);
         foreach($this->clients as $client){
             if ($from !== $client){
-                $client->send($msg); 
+                $client->send($msg);
+            }
+            if ($from == $client){
+                $client->name = $decodedMsg->message; 
             }
         }
-        $from->name = $decodedMsg->message; 
-        echo printf("Name setted\n");
+    }
+
+    public function createConversation($user, $me){
+        // $user = l'user à qui on envoie un message : C'est seulement son nom d'utilisateur. 
+        // $me = l'user qui envoie le message : C'est l'objet Ratchet complet
+
+        // Etape 1 : Retrouver le client correspondant à $user sachant que $me est déjà le client complet. 
+        foreach($this->clients as $client){
+            if($client->name == $user){
+                $user = $client; // Rattacher $user à l'objet Ratchet complet le représentant. 
+            }
+        }
+
+        // Etape 2 : Faire en sorte de les lier à travers une conversation : On stocke le pseudo de l'autre dans l'objet de l'user courant ! 
+
+        $this->currentConversation = $user->name; 
+        return true; 
+    }
+
+    public function checkName($msg){
+        // Fonction qui vérifie si le pseudo choisit par l'user en cours n'est pas déjà utilisé. 
+        foreach ($this->clients as $client){
+            if ($client->name == $msg){
+                return false; 
+            }
+            else {
+                return true; 
+            }
+        }
+    }
+
+
+    public function convGeneralMessage(){
+        $this->currentConversation = "general"; 
     }
 }
