@@ -15,15 +15,12 @@ class Chat implements MessageComponentInterface {
         $this->database = new \DbConnect(); 
         $this->currentConversation = "general"; 
     }
-
     public function onOpen(ConnectionInterface $conn) {
         // Store the new connection to send messages to later
         $this->clients[$conn->resourceId] = $conn;
         echo "New connection! ({$conn->resourceId})\n";
 
     } 
-
-
     public function onMessage(ConnectionInterface $from, $msg) {
         $insert = json_decode($msg); 
 
@@ -55,8 +52,10 @@ class Chat implements MessageComponentInterface {
                 $from->send(json_encode(["command" => "conversationCreated", "user" => $insert->message])); 
             }
         }
+        if ($insert->command == "privateMessage"){
+            $this->onPrivateMessage($insert->sender, $insert->receiver, $insert->message); 
+        }
     }
-
     public function onClose(ConnectionInterface $conn) {
         // The connection is closed, remove it, as we can no longer send it messages
         // C'est ici qu'on va gérer la déconnexion et la notification aux autres du fait que quelqu'un a quitter la conversation
@@ -69,21 +68,20 @@ class Chat implements MessageComponentInterface {
         }
         echo "Connection {$conn->resourceId} has disconnected\n";
     }
-
     public function onError(ConnectionInterface $conn, \Exception $e) {
         echo "An error has occurred: {$e->getMessage()}\n";
 
         $conn->close();
     }
-
     public function onGeneralMessage($from, $insert, $msg){
         $numRecv = count($this->clients) - 1;
         echo sprintf('Connection %d sending message "%s" to %d other connection%s' . "\n"
             , $from->resourceId, $insert->message, $numRecv, $numRecv == 1 ? '' : 's');
 
         $db = $this->database->connect(); 
-        $query = $db->prepare('INSERT INTO message(sender, message) VALUES (?, ?)'); 
-        $query->execute(array($insert->sender, $insert->message));
+
+        $query = $db->prepare('INSERT INTO message(sender, receiver, message) VALUES (?, ?, ?)'); 
+        $query->execute(array($insert->sender, "general", $insert->message));
  
         foreach ($this->clients as $client) { // Modifier pour envoyer exclusivement au client concerné 
             if ($from !== $client) {
@@ -91,7 +89,6 @@ class Chat implements MessageComponentInterface {
             }
         }
     }
-
     public function setName($from, $msg){
         // Rajouter une contrainte qui vérifie si le pseudo choisit n'existe pas déjà. 
 
@@ -120,6 +117,19 @@ class Chat implements MessageComponentInterface {
         // Etape 2 : Faire en sorte de les lier à travers une conversation : On stocke le pseudo de l'autre dans l'objet de l'user courant ! 
 
         $this->currentConversation = $user->name; 
+        
+        $jsonExample = ["command" => "conversationCreated", "user" => $this->currentConversation]; 
+       //  $me->send() // Commande : conversationMessages | Content : tableau contenant tous les messages 
+
+        $db = $this->database->connect(); 
+
+        $query = $db->prepare('SELECT * FROM message WHERE sender = ? AND receiver = ? OR sender = ? AND receiver = ? '); 
+        $query->execute(array($me->name, $this->currentConversation, $this->currentConversation, $me->name));
+        
+        $messagesQuery = $query->fetchAll($db::FETCH_ASSOC); 
+        $jsonToSend = json_encode(["command" => "conversationMessages", "messages" => $messagesQuery]); 
+
+        $me->send($jsonToSend); 
         return true; 
     }
 
@@ -134,9 +144,18 @@ class Chat implements MessageComponentInterface {
             }
         }
     }
-
-
     public function convGeneralMessage(){
         $this->currentConversation = "general"; 
+    }
+    public function onPrivateMessage($from, $to, $message){
+        foreach ($this->clients as $client){
+            if ($to == $client->name){
+                $client->send(json_encode(["command" => "privateMessage", "receiver" => $to, "sender" => $from, "message" => $message])); 
+               
+                $db = $this->database->connect(); 
+                $query = $db->prepare('INSERT INTO message(sender, receiver, message) VALUES (?, ?, ?)'); 
+                $query->execute(array($from, $to, $message));
+            }
+        }
     }
 }

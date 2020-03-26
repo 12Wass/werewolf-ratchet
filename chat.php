@@ -4,6 +4,7 @@
     <title>Ratchet</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="css/msger-style.css">
+    <link rel="stylesheet" href="css/uikit.min.css">
 </head>
 
 <body>
@@ -29,6 +30,7 @@
     <button type="submit" class="msger-send-btn">Envoyer</button>
 </div>
 </section>
+<script src="js/uikit.min.js"></script>
 <script src="js/chat.js"></script>
 </body>
 </html>
