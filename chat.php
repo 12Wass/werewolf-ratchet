@@ -9,6 +9,7 @@
 
 <body>
 <aside id="usersList">
+  <p onclick="backToGeneral()">Retour au chat général</p>
   <h4>Utilisateurs connectés : </h4>
 </aside>
 <section class="msger">
@@ -28,7 +29,7 @@
   <div class="msger-inputarea">
     <input type="text" class="msger-input" placeholder="Entrez votre message..." id="messageToSend">
     <button type="submit" class="msger-send-btn">Envoyer</button>
-</div>
+  </div>
 </section>
 <script src="js/uikit.min.js"></script>
 <script src="js/chat.js"></script>

@@ -21,9 +21,9 @@ if (name !== null && name !== ""){
 
     // Réception de messages
     conn.onmessage = function(e) {
-        let received = JSON.parse(e.data); 
-        if (received.command == "genMessage"){
-          if (currentConversation == "general"){
+        let received = JSON.parse(e.data);
+        if (received.command === "genMessage"){
+          if (currentConversation === "general"){
               let newMessage = generateMessage("received", received.message, received.sender);
               msgerchat.insertAdjacentHTML("beforeend", newMessage); 
               msgerchat.scrollTop += 500;
@@ -31,24 +31,24 @@ if (name !== null && name !== ""){
 
           }
         }
-        if (received.command == "setName"){
+        if (received.command === "setName"){
         //   if (received.message !== null){
           let usersList = document.getElementById("usersList"); 
           usersList.innerHTML += '<div id="' + received.message + '" onclick="createConversation(' + received.message + ')">' + received.message + '</div>';
         //  }
         }
-        if (received.command == "getNames"){
+        if (received.command === "getNames"){
           addNameToConversations(received); 
         }
-        if (received.command == "disconnectUser"){
+        if (received.command === "disconnectUser"){
           disconnectUser(received.user);   
         }
-        if (received.command == "nameUsed"){
+        if (received.command === "nameUsed"){
           alert("Le pseudo choisit est déjà utilisé, veuillez réessayer."); 
           document.location.reload(true); // Recharger la page actuelle.
         }
-        if (received.command == "privateMessage"){
-          if (currentConversation == "general" || currentConversation !== received.sender){
+        if (received.command === "privateMessage"){
+          if (currentConversation === "general" || currentConversation !== received.sender){
               // Ici on notifie l'user qu'il a un message :
               UIkit.notification({
                 message: received.sender + ' : "' + received.message + '"',
@@ -68,47 +68,47 @@ if (name !== null && name !== ""){
               }
           }
           else {
-            if (currentConversation == received.sender){
+            if (currentConversation === received.sender){
               let htmlMessage = generateMessage("received", received.message, received.sender);
               msgerchat.insertAdjacentHTML("beforeend", htmlMessage); 
               msgerchat.scrollTop += 500;
             }
           }
         }
-        if (received.command == "conversationCreated"){
+        if (received.command === "conversationCreated"){
           currentConversation = received.user; 
 
-          let chatInner = document.getElementById("msger-chat"); 
           let userInner = document.getElementById(received.user);  
 
           userInner.style = "background-color: red"; 
-          chatInner.innerHTML = ""; 
         }
-        if (received.command == "conversationMessages"){
-          let generateTest = generateMessage("sent", received.messages[0].message, received.messages[0].sender);
-          msgerchat.insertAdjacentHTML("beforeend", generateTest); 
-          // Pourquoi ça marche pas? Tout s'affiche mais tout s'efface directement après
+        if (received.command === "conversationMessages"){
+          msgerchat.innerHTML = ""; 
+          let htmlMessage;
           received.messages.forEach(element => {
-            if (element.sender == name){
-              let htmlMessage = generateMessage("sent", element.message, element.sender);
-              msgerchat.insertAdjacentHTML("beforeend", htmlMessage); 
-              msgerchat.scrollTop += 500; 
-            } else {
-              let htmlMessage = generateMessage("received", element.message, element.sender);
-              msgerchat.insertAdjacentHTML("beforeend", htmlMessage); 
+            if (element.sender === name){
+              htmlMessage = generateMessage("sent", element.message, element.sender);
+              msgerchat.insertAdjacentHTML("beforeend", htmlMessage);
               msgerchat.scrollTop += 500;
+              msgerchat.innerHTML += htmlMessage;
+             // document.write(htmlMessage); 
+            } 
+            else {
+              htmlMessage = generateMessage("received", element.message, element.sender);
+              msgerchat.insertAdjacentHTML("beforeend", htmlMessage);
+              msgerchat.scrollTop += 500;
+            //  document.write(htmlMessage); 
             }
-            console.log(element); 
           });
         }
     };
     
 
     // Envoi de message
-    var input = document.getElementById("messageToSend");
+    let input = document.getElementById("messageToSend");
     input.addEventListener("keyup", function(event) {
         if (event.keyCode === 13) {
-          if (currentConversation == "general"){
+          if (currentConversation === "general"){
               let data = {message: input.value, sender: name, command: "genMessage"};
               conn.send(JSON.stringify(data));
             
@@ -133,7 +133,7 @@ if (name !== null && name !== ""){
 }
 
 function generateMessage(type, message, name){
-    if (type == "received"){
+    if (type === "received"){
         return `<div class="msg left-msg">
       <div
        class="msg-img"
@@ -192,5 +192,15 @@ function createConversation(user){
   if (currentConversation !== user.id){
     let data = {message: user.id, sender: name, command: "createConversation"};
     conn.send(JSON.stringify(data));
+  }
+}
+
+function backToGeneral(){
+  if (currentConversation !== "general"){
+    let currentUser = document.getElementById(currentConversation); 
+    currentUser.style = ""; 
+    currentConversation = "general"; 
+    let data = {message: "general", sender: name, command: "createConversation"}; 
+    conn.send(JSON.stringify(data)); 
   }
 }

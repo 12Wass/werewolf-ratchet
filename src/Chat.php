@@ -23,7 +23,6 @@ class Chat implements MessageComponentInterface {
     } 
     public function onMessage(ConnectionInterface $from, $msg) {
         $insert = json_decode($msg); 
-
         if ($insert->command == "genMessage"){
             $this->onGeneralMessage($from, $insert, $msg); 
         }
@@ -56,6 +55,7 @@ class Chat implements MessageComponentInterface {
             $this->onPrivateMessage($insert->sender, $insert->receiver, $insert->message); 
         }
     }
+
     public function onClose(ConnectionInterface $conn) {
         // The connection is closed, remove it, as we can no longer send it messages
         // C'est ici qu'on va gérer la déconnexion et la notification aux autres du fait que quelqu'un a quitter la conversation
@@ -102,7 +102,6 @@ class Chat implements MessageComponentInterface {
             }
         }
     }
-
     public function createConversation($user, $me){
         // $user = l'user à qui on envoie un message : C'est seulement son nom d'utilisateur. 
         // $me = l'user qui envoie le message : C'est l'objet Ratchet complet
@@ -118,9 +117,6 @@ class Chat implements MessageComponentInterface {
 
         $this->currentConversation = $user->name; 
         
-        $jsonExample = ["command" => "conversationCreated", "user" => $this->currentConversation]; 
-       //  $me->send() // Commande : conversationMessages | Content : tableau contenant tous les messages 
-
         $db = $this->database->connect(); 
 
         $query = $db->prepare('SELECT * FROM message WHERE sender = ? AND receiver = ? OR sender = ? AND receiver = ? '); 
@@ -132,7 +128,6 @@ class Chat implements MessageComponentInterface {
         $me->send($jsonToSend); 
         return true; 
     }
-
     public function checkName($msg){
         // Fonction qui vérifie si le pseudo choisit par l'user en cours n'est pas déjà utilisé. 
         foreach ($this->clients as $client){
